@@ -1,3 +1,3 @@
-# DesQuestion
+# Discket Ticket Bot
 
-DesQuestion is a Discord ticketing bot written in Rust. Its primary goal is to make asking questions anonymously.
+A discord ticketing bot written in Rust. Its primary goal is to allow people to ask questions anonymously.
