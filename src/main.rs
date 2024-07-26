@@ -1,32 +1,39 @@
-use std::env;
 use dotenv::dotenv;
-use handler::DesQuestionHandler;
+use handler::get_framework;
 use logging::setup_logging;
-use serenity::all::GatewayIntents;
+use poise::serenity_prelude::{Client, GatewayIntents};
+use std::env;
 
 #[macro_use]
 extern crate tracing;
 
 // Crate modules
-mod logging;
+mod database;
 mod handler;
+mod helper;
+mod logging;
 
 #[tokio::main]
 async fn main() {
-    setup_logging().unwrap_or_else(|error| panic!("Failed to setup logging : {error}"));
+    setup_logging().unwrap_or_else(|error| panic!("Failed to set up logging: {error}"));
 
     dotenv().unwrap_or_else(|error| panic!("Failed to load .env file : {error}"));
 
-    let token = env::var("DISCORD_TOKEN")
+    let db_pool = database::get_database_pool()
+        .await
+        .unwrap_or_else(|error| panic!("Failed to create database pool: {error}"));
+
+    let discord_token = env::var("DISCORD_TOKEN")
         .unwrap_or_else(|error| panic!("Failed to get DISCORD_TOKEN from .env file : {error}"));
 
     let intents = GatewayIntents::GUILDS
         | GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
-        | GatewayIntents::GUILD_MESSAGE_REACTIONS;
+        | GatewayIntents::GUILD_MESSAGE_REACTIONS
+        | GatewayIntents::MESSAGE_CONTENT;
 
-    let mut client = serenity::Client::builder(token, intents)
-        .event_handler(DesQuestionHandler)
+    let mut client = Client::builder(discord_token, intents)
+        .framework(get_framework(db_pool))
         .intents(intents)
         .await
         .expect("Failed to create client");
