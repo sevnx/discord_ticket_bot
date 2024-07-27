@@ -1,6 +1,6 @@
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
 
-pub fn setup_logging() -> Result<(), String> {
+pub fn setup() -> Result<(), String> {
     let fmt_layer = tracing_subscriber::fmt::layer().compact();
 
     let filter_layer = EnvFilter::try_from_default_env()

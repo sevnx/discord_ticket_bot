@@ -1,6 +1,5 @@
 use dotenv::dotenv;
 use handler::get_framework;
-use logging::setup_logging;
 use poise::serenity_prelude::{Client, GatewayIntents};
 use std::env;
 
@@ -15,7 +14,7 @@ mod logging;
 
 #[tokio::main]
 async fn main() {
-    setup_logging().unwrap_or_else(|error| panic!("Failed to set up logging: {error}"));
+    logging::setup().unwrap_or_else(|error| panic!("Failed to set up logging: {error}"));
 
     dotenv().unwrap_or_else(|error| panic!("Failed to load .env file : {error}"));
 
@@ -36,7 +35,7 @@ async fn main() {
         .framework(get_framework(db_pool))
         .intents(intents)
         .await
-        .expect("Failed to create client");
+        .unwrap_or_else(|error| panic!("Failed to create client: {error}"));
 
     if let Err(error) = client.start().await {
         error!("Client error: {error}");

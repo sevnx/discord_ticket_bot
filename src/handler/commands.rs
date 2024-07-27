@@ -1,65 +1,16 @@
-use std::time::Duration;
+//! This module regroups the commands supported by the discord bot.
 
-use poise::command;
+use poise::{serenity_prelude::Error, Context, CreateReply, ReplyHandle};
 
-use crate::handler::{Context, Error};
+pub mod setup;
 
-/// This command (`setup`) is used to set up a discord server.
-#[command(slash_command, prefix_command)]
-pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
-    let mut pool = ctx.data().pool.acquire().await?;
+/// Helper trait to send simple messages (text only)
+pub trait SimpleMessage<'a, E> {
+    async fn send_simple_message(&self, text: &str) -> Result<ReplyHandle<'a>, Error>;
+}
 
-    // Get the guild ID
-    let guild_id = match ctx.guild_id() {
-        Some(guild) => guild.get(),
-        None => {
-            return Err("Failed to get guild ID".into());
-        }
-    };
-
-    // Check if the server is already set up
-    let row = sqlx::query!(
-        "SELECT id, setup_complete FROM servers WHERE id = $1",
-        guild_id as i64
-    )
-    .fetch_optional(&mut *pool)
-    .await?;
-
-    match row {
-        Some(row) => {
-            if row.setup_complete {
-                ctx.reply("Server already set up").await?;
-                return Ok(());
-            }
-        }
-        None => {
-            sqlx::query!(
-                "INSERT INTO servers (id, setup_complete) VALUES ($1, false)",
-                guild_id as i64
-            )
-            .execute(&mut *pool)
-            .await?;
-        }
+impl<'a, U, E> SimpleMessage<'a, E> for Context<'a, U, E> {
+    async fn send_simple_message(&self, text: &str) -> Result<ReplyHandle<'a>, Error> {
+        self.send(CreateReply::default().content(text)).await
     }
-
-    // Setting up the server
-
-    let reply = ctx
-        .author()
-        .await_reply(&ctx)
-        .timeout(Duration::from_secs(1))
-        .await;
-
-    match reply {
-        Some(ref reply) => {
-            ctx.say(format!("Reply: {}", reply.content)).await?;
-        }
-        None => {
-            ctx.say("Timeout reached").await?;
-        }
-    }
-
-    info!("{:?}", reply);
-
-    Ok(())
 }
