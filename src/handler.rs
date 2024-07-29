@@ -1,4 +1,3 @@
-use commands::setup::setup;
 use poise::{Framework, FrameworkOptions};
 
 mod commands;
@@ -29,7 +28,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 
 fn get_functions() -> FrameworkOptions<Data, Error> {
     FrameworkOptions {
-        commands: vec![setup()],
+        commands: commands::get(),
         prefix_options: poise::PrefixFrameworkOptions {
             prefix: Some("$".to_string()),
             edit_tracker: None,

@@ -1,3 +1,5 @@
+#![allow(clippy::cast_possible_wrap)]
+
 use dotenv::dotenv;
 use handler::get_framework;
 use poise::serenity_prelude::{Client, GatewayIntents};
