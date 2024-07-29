@@ -1,6 +1,11 @@
 use std::env;
 
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+use sqlx::{
+    postgres::{PgConnectOptions, PgPoolOptions},
+    PgConnection,
+};
+
+use crate::handler::Error;
 
 fn get_connection() -> Result<PgConnectOptions, String> {
     Ok(PgConnectOptions::new()
@@ -23,4 +28,17 @@ pub async fn get_database_pool() -> Result<sqlx::PgPool, String> {
         .connect_with(connection)
         .await
         .map_err(|error| error.to_string())
+}
+
+pub async fn is_server_setup(
+    pool: &mut PgConnection,
+    guild_id: u64,
+) -> Result<Option<bool>, Error> {
+    let row = sqlx::query!(
+        "SELECT setup_complete FROM servers WHERE id = $1",
+        guild_id as i64
+    )
+    .fetch_optional(&mut *pool)
+    .await?;
+    Ok(row.map(|row| row.setup_complete))
 }

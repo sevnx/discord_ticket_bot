@@ -3,8 +3,8 @@ use poise::{Framework, FrameworkOptions};
 mod commands;
 
 // Types used by all command functions
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Context<'a> = poise::Context<'a, Data, Error>;
 
 pub struct Data {
     pool: sqlx::Pool<sqlx::Postgres>,

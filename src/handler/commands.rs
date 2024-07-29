@@ -5,10 +5,16 @@ use poise::{serenity_prelude::Error, Command, Context, CreateReply, ReplyHandle}
 use super::Data;
 
 pub mod setup;
+pub mod subject;
 
 /// Get all the commands supported by the bot
 pub fn get() -> Vec<Command<Data, super::Error>> {
-    vec![setup::setup()]
+    vec![
+        setup::setup(),
+        subject::add(),
+        subject::remove(),
+        subject::list(),
+    ]
 }
 
 /// Helper trait to send simple messages (text only)

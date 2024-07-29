@@ -12,6 +12,7 @@ use poise::{
 use sqlx::PgConnection;
 
 use crate::{
+    database::is_server_setup,
     handler::{commands::SimpleMessage, Context, Error},
     helper::parser::parse_discord_channel_id_url,
 };
@@ -96,17 +97,6 @@ async fn ask_for_ticket_channel_id(ctx: &Context<'_>) -> Result<u64, Error> {
     };
 
     Ok(channel_id)
-}
-
-async fn is_server_setup(pool: &mut PgConnection, guild_id: u64) -> Result<Option<bool>, Error> {
-    let row = sqlx::query!(
-        "SELECT setup_complete FROM servers WHERE id = $1",
-        guild_id as i64
-    )
-    .fetch_optional(&mut *pool)
-    .await?;
-
-    Ok(row.map(|row| row.setup_complete))
 }
 
 async fn setup_request_channel(
