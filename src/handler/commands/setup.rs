@@ -15,6 +15,7 @@ use crate::{
     database::is_server_setup,
     handler::{commands::SimpleMessage, Context, Error},
     helper::parser::parse_discord_channel_id_url,
+    tickets::TICKET_EMOJI,
 };
 
 /// Constants for messages
@@ -192,7 +193,7 @@ async fn setup_reaction_message(
     .await?;
 
     sent_message
-        .react(&ctx, ReactionType::Unicode("🎫".to_string()))
+        .react(&ctx, ReactionType::Unicode(TICKET_EMOJI.into()))
         .await?;
 
     Ok(())

@@ -1,6 +1,7 @@
 use poise::{Framework, FrameworkOptions};
 
 mod commands;
+mod events;
 
 // Types used by all command functions
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -29,6 +30,9 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 fn get_functions() -> FrameworkOptions<Data, Error> {
     FrameworkOptions {
         commands: commands::get(),
+        event_handler: |ctx, event, framework, data| {
+            Box::pin(events::event_handler(ctx, event, framework, data))
+        },
         prefix_options: poise::PrefixFrameworkOptions {
             prefix: Some("$".to_string()),
             edit_tracker: None,

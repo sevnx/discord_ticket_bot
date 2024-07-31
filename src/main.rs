@@ -13,6 +13,7 @@ mod database;
 mod handler;
 mod helper;
 mod logging;
+mod tickets;
 
 #[tokio::main]
 async fn main() {
