@@ -11,6 +11,7 @@ pub async fn event_handler(
     data: &Data,
 ) -> Result<(), Error> {
     match event {
+        // TODO: (?) Handle other events (like `Ready` etc.)
         FullEvent::ReactionAdd { add_reaction } => {
             handle_reaction(ctx, add_reaction, data).await?;
         }
@@ -24,6 +25,7 @@ async fn handle_reaction(
     reaction: &serenity::Reaction,
     data: &Data,
 ) -> Result<(), Error> {
+    // TODO: Improve error handling
     let member = reaction
         .guild_id
         .unwrap()

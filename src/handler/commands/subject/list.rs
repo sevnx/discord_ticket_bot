@@ -27,6 +27,7 @@ pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
         .collect::<Vec<String>>()
         .join("\n");
 
+    // TODO: Make into a cleaner embed message
     if answer.is_empty() {
         ctx.reply("❌ - No subjects found").await?;
         return Ok(());

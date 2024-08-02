@@ -24,6 +24,7 @@ pub async fn handle_create_ticket(
     member: &Member,
     unclaimed_category_id: u64,
 ) -> Result<(), Error> {
+    // TODO: Improve error handling
     let guild = member.guild_id;
     let mut pool = data.pool.acquire().await?;
 
@@ -48,6 +49,7 @@ pub async fn handle_create_ticket(
     });
 
     // Send message in channel
+    // TODO: Change message to embed to make it look better
     let message = CreateMessage::new().content(format!(
         "Hello <@{}>, welcome to your ticket channel, please type out the subject of your ticket",
         member.user.id
@@ -148,6 +150,7 @@ async fn send_opened_ticket_dm(
     user: &User,
     channel_id: &ChannelId,
 ) -> Result<(), Error> {
+    // TODO: Change message to embed to make it look better
     let dm_message = CreateMessage::new()
         .content(format!("Your ticket has been created : <#{}>", channel_id))
         .tts(false);

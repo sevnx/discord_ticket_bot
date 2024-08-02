@@ -19,6 +19,7 @@ use crate::{
 };
 
 /// Constants for messages
+// TODO: Do something about this, to unify handling across the bot
 mod messages {
     pub const MSG_SETUP_SUCCESS: &str = "Server set up successfully";
     pub const MSG_SETUP_ALREADY: &str = "Server already set up";
@@ -62,6 +63,8 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
     let channel_id = ask_for_ticket_channel_id(&ctx).await?;
     setup_request_channel(&ctx, &mut pool, guild_id, channel_id).await?;
     create_ticket_channel_categories(&ctx, &mut pool, guild_id).await?;
+    // TODO: Handle creating the helper role and setting up permissions and admins
+    // TODO: (?) Handle adding a log channel, in case we have errors we want to output
     setup_reaction_message(&ctx, &mut pool, guild_id, channel_id).await?;
 
     ctx.send_simple_message(messages::MSG_SETUP_SUCCESS).await?;

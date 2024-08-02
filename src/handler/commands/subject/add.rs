@@ -53,6 +53,7 @@ pub async fn add_prefix(ctx: Context<'_>, #[rest] name: Option<String>) -> Resul
     add_subject(ctx, name, channel_id.content).await
 }
 
+// TODO: (?) Add keywords to the subject to facilitate matching
 async fn add_subject(ctx: Context<'_>, name: String, channel_id: String) -> Result<(), Error> {
     const MAX_SUBJECT_LENGTH: usize = 100;
     const MIN_SUBJECT_LENGTH: usize = 1;
