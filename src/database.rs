@@ -1,5 +1,6 @@
 use std::env;
 
+use poise::serenity_prelude::GuildId;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
     PgConnection,
@@ -32,13 +33,40 @@ pub async fn get_database_pool() -> Result<sqlx::PgPool, String> {
 
 pub async fn is_server_setup(
     pool: &mut PgConnection,
-    guild_id: u64,
+    guild_id: GuildId,
 ) -> Result<Option<bool>, Error> {
     let row = sqlx::query!(
         "SELECT setup_complete FROM servers WHERE id = $1",
-        guild_id as i64
+        guild_id.get() as i64
     )
     .fetch_optional(&mut *pool)
     .await?;
     Ok(row.map(|row| row.setup_complete))
+}
+
+/// Represents a subject
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct Subject {
+    pub id: Option<u64>,
+    pub name: String,
+}
+
+pub async fn get_subjects(
+    pool: &mut PgConnection,
+    guild_id: GuildId,
+) -> Result<Vec<Subject>, Error> {
+    info!("Getting subjects for guild {}", guild_id);
+    let rows = sqlx::query!(
+        "SELECT id, name FROM subjects WHERE server_id = $1",
+        guild_id.get() as i64
+    )
+    .fetch_all(&mut *pool)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| Subject {
+            id: Some(row.id as u64),
+            name: row.name,
+        })
+        .collect())
 }

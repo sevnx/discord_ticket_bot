@@ -22,7 +22,7 @@ pub fn get() -> Vec<Command<Data, super::Error>> {
 /// Helper function to check if the server is set up
 async fn check_server_setup(ctx: MyContext<'_>) -> Result<bool, MyError> {
     let mut pool = ctx.data().pool.acquire().await?;
-    let guild_id = ctx.guild_id().ok_or("Failed to get guild ID")?.get();
+    let guild_id = ctx.guild_id().ok_or("Failed to get guild ID")?;
     Ok(is_server_setup(&mut pool, guild_id).await? == Some(true))
 }
 

@@ -1,15 +1,13 @@
-use poise::serenity_prelude::{
-    self as serenity, CacheHttp, FullEvent, ReactionType, ReactionTypes,
-};
+use poise::serenity_prelude::{self as serenity, CacheHttp, Context, FullEvent, ReactionType};
 
-use crate::tickets::TICKET_EMOJI;
+use crate::tickets::{handle_create_ticket, TICKET_EMOJI};
 
 use super::{Data, Error};
 
 pub async fn event_handler(
-    ctx: &serenity::Context,
+    ctx: &Context,
     event: &serenity::FullEvent,
-    _framework: poise::FrameworkContext<'_, Data, Error>,
+    _: poise::FrameworkContext<'_, Data, Error>,
     data: &Data,
 ) -> Result<(), Error> {
     match event {
@@ -22,14 +20,19 @@ pub async fn event_handler(
 }
 
 async fn handle_reaction(
-    ctx: &serenity::Context,
+    ctx: &Context,
     reaction: &serenity::Reaction,
     data: &Data,
 ) -> Result<(), Error> {
-    let user = reaction.user(ctx.http()).await?;
+    let member = reaction
+        .guild_id
+        .unwrap()
+        .member(ctx, reaction.user_id.unwrap())
+        .await?;
+
     let mut pool = data.pool.acquire().await?;
 
-    if user.bot {
+    if member.user.bot {
         return Ok(());
     }
 
@@ -48,6 +51,16 @@ async fn handle_reaction(
     )
     .fetch_optional(&mut *pool)
     .await?;
+
+    match row {
+        Some(row) => {
+            let unclaimed_id = row.unclaimed_category_id.unwrap();
+            handle_create_ticket(&ctx, data, &member, unclaimed_id as u64).await?;
+        }
+        None => {
+            return Ok(());
+        }
+    }
 
     reaction.delete(ctx.http()).await?;
 

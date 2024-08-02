@@ -6,7 +6,7 @@ use poise::{
     command,
     serenity_prelude::{
         model::channel, ChannelId, ChannelType, CreateChannel, CreateMessage, GuildChannel,
-        ReactionType,
+        GuildId, ReactionType,
     },
 };
 use sqlx::PgConnection;
@@ -41,7 +41,7 @@ mod messages {
 pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
     let mut pool = ctx.data().pool.acquire().await?;
 
-    let guild_id = ctx.guild_id().ok_or(messages::MSG_GUILD_FAIL)?.get();
+    let guild_id = ctx.guild_id().ok_or(messages::MSG_GUILD_FAIL)?;
 
     match is_server_setup(&mut pool, guild_id).await? {
         Some(true) => {
@@ -49,9 +49,12 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
             return Ok(());
         }
         None => {
-            sqlx::query!("INSERT INTO servers (id) VALUES ($1)", guild_id as i64)
-                .execute(&mut *pool)
-                .await?;
+            sqlx::query!(
+                "INSERT INTO servers (id) VALUES ($1)",
+                guild_id.get() as i64
+            )
+            .execute(&mut *pool)
+            .await?;
         }
         _ => {}
     }
@@ -65,7 +68,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
 
     sqlx::query!(
         "UPDATE servers SET setup_complete = true WHERE id = $1",
-        guild_id as i64
+        guild_id.get() as i64
     )
     .execute(&mut *pool)
     .await?;
@@ -73,7 +76,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-async fn ask_for_ticket_channel_id(ctx: &Context<'_>) -> Result<u64, Error> {
+async fn ask_for_ticket_channel_id(ctx: &Context<'_>) -> Result<ChannelId, Error> {
     ctx.send_simple_message(messages::MSG_SETUP_CHANNEL_ID)
         .await?;
 
@@ -97,14 +100,14 @@ async fn ask_for_ticket_channel_id(ctx: &Context<'_>) -> Result<u64, Error> {
         return Err(messages::MSG_SETUP_CHANNEL_INVALID.into());
     };
 
-    Ok(channel_id)
+    Ok(channel_id.into())
 }
 
 async fn setup_request_channel(
     ctx: &Context<'_>,
     pool: &mut PgConnection,
-    guild_id: u64,
-    channel_id: u64,
+    guild_id: GuildId,
+    channel_id: ChannelId,
 ) -> Result<(), Error> {
     let Ok(channel) = ctx.http().get_channel(channel_id.into()).await else {
         ctx.send_simple_message(messages::MSG_SETUP_CHANNEL_NOT_FOUND)
@@ -122,8 +125,8 @@ async fn setup_request_channel(
 
     sqlx::query!(
         "UPDATE servers SET ticket_channel_id = $1 WHERE id = $2",
-        channel_id as i64,
-        guild_id as i64
+        channel_id.get() as i64,
+        guild_id.get() as i64
     )
     .execute(&mut *pool)
     .await?;
@@ -137,7 +140,7 @@ async fn setup_request_channel(
 async fn create_ticket_channel_categories(
     ctx: &Context<'_>,
     pool: &mut PgConnection,
-    guild_id: u64,
+    guild_id: GuildId,
 ) -> Result<(), Error> {
     let unclaimed = create_server_category(ctx, guild_id, "Unclaimed Tickets").await?;
     let claimed = create_server_category(ctx, guild_id, "Claimed Tickets").await?;
@@ -147,7 +150,7 @@ async fn create_ticket_channel_categories(
         id = $3",
         unclaimed.id.get() as i64,
         claimed.id.get() as i64,
-        guild_id as i64
+        guild_id.get() as i64
     )
     .execute(&mut *pool)
     .await?;
@@ -158,7 +161,7 @@ async fn create_ticket_channel_categories(
 /// Creates a server category
 async fn create_server_category(
     ctx: &Context<'_>,
-    guild_id: u64,
+    guild_id: GuildId,
     name: &str,
 ) -> Result<GuildChannel, Error> {
     let builder = CreateChannel::new("")
@@ -176,8 +179,8 @@ async fn create_server_category(
 async fn setup_reaction_message(
     ctx: &Context<'_>,
     pool: &mut PgConnection,
-    guild_id: u64,
-    channel_id: u64,
+    guild_id: GuildId,
+    channel_id: ChannelId,
 ) -> Result<(), Error> {
     let message = CreateMessage::default().content("React with 🎫 to open a ticket");
     let sent_message = ChannelId::from(channel_id)
@@ -187,7 +190,7 @@ async fn setup_reaction_message(
     sqlx::query!(
         "UPDATE servers SET ticket_message_id = $1 WHERE id = $2",
         sent_message.id.get() as i64,
-        guild_id as i64
+        guild_id.get() as i64
     )
     .execute(&mut *pool)
     .await?;
