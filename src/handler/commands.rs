@@ -7,6 +7,7 @@ use poise::{serenity_prelude::Error, Command, Context, CreateReply, ReplyHandle}
 
 pub mod setup;
 pub mod subject;
+pub mod ticket;
 
 /// Get all the commands supported by the bot
 pub fn get() -> Vec<Command<Data, super::Error>> {
@@ -16,6 +17,7 @@ pub fn get() -> Vec<Command<Data, super::Error>> {
         subject::add::add_prefix(),
         subject::list::list(),
         subject::remove::remove(),
+        ticket::claim::claim(),
     ]
 }
 
