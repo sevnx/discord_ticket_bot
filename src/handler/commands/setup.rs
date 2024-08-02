@@ -5,8 +5,8 @@ use std::time::Duration;
 use poise::{
     command,
     serenity_prelude::{
-        model::channel, ChannelId, ChannelType, CreateChannel, CreateMessage, GuildChannel,
-        GuildId, ReactionType,
+        model::channel, ChannelId, ChannelType, CreateChannel, CreateMessage, EditRole,
+        GuildChannel, GuildId, ReactionType,
     },
 };
 use sqlx::PgConnection;
@@ -63,7 +63,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
     let channel_id = ask_for_ticket_channel_id(&ctx).await?;
     setup_request_channel(&ctx, &mut pool, guild_id, channel_id).await?;
     create_ticket_channel_categories(&ctx, &mut pool, guild_id).await?;
-    // TODO: Handle creating the helper role and setting up permissions and admins
+    create_helper_role(&ctx, &mut pool, guild_id).await?;
     // TODO: (?) Handle adding a log channel, in case we have errors we want to output
     setup_reaction_message(&ctx, &mut pool, guild_id, channel_id).await?;
 
@@ -129,6 +129,29 @@ async fn setup_request_channel(
     sqlx::query!(
         "UPDATE servers SET ticket_channel_id = $1 WHERE id = $2",
         channel_id.get() as i64,
+        guild_id.get() as i64
+    )
+    .execute(&mut *pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Creates the helper role
+///
+/// Helpers are the people who can claim and see the tickets
+/// They cannot however close the tickets (reserved for admins)
+async fn create_helper_role(
+    ctx: &Context<'_>,
+    pool: &mut PgConnection,
+    guild_id: GuildId,
+) -> Result<(), Error> {
+    let role = EditRole::default().name("Helper");
+    let created_role = guild_id.create_role(ctx.http(), role).await?;
+
+    sqlx::query!(
+        "UPDATE servers SET helper_role_id = $1 WHERE id = $2",
+        created_role.id.get() as i64,
         guild_id.get() as i64
     )
     .execute(&mut *pool)
