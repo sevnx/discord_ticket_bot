@@ -8,7 +8,6 @@ use poise::{
 #[command(
     slash_command,
     prefix_command,
-    required_permissions = "MANAGE_CHANNELS",
     check = "check_server_setup",
     guild_only
 )]
