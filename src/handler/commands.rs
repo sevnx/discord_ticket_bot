@@ -18,6 +18,7 @@ pub fn get() -> Vec<Command<Data, super::Error>> {
         subject::list::list(),
         subject::remove::remove(),
         ticket::claim::claim(),
+        ticket::close::close(),
     ]
 }
 

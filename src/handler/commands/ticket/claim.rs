@@ -4,7 +4,7 @@ use poise::{
     serenity_prelude::{ChannelId, ChannelType, EditChannel},
 };
 
-/// Adds a single subject to the list of subjects that can be used to better categorize tickets
+/// Claims a ticket
 #[command(
     slash_command,
     prefix_command,
@@ -60,6 +60,9 @@ pub async fn claim(ctx: Context<'_>) -> Result<(), Error> {
         .category(category_channel_id);
 
     ctx.channel_id().edit(ctx.http(), edit_channel).await?;
+
+    // Respond with emoji
+    ctx.reply("✅").await?;
 
     Ok(())
 }
