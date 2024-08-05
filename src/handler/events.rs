@@ -1,6 +1,6 @@
 use poise::serenity_prelude::{self as serenity, CacheHttp, Context, FullEvent, ReactionType};
 
-use crate::tickets::{handle_create_ticket, TICKET_EMOJI};
+use crate::tickets::{self, TICKET_EMOJI};
 
 use super::{Data, Error};
 
@@ -57,7 +57,7 @@ async fn handle_reaction(
     match row {
         Some(row) => {
             let unclaimed_id = row.unclaimed_category_id.unwrap();
-            handle_create_ticket(&ctx, data, &member, unclaimed_id as u64).await?;
+            tickets::create::create(&ctx, data, &member, unclaimed_id as u64).await?;
         }
         None => {
             return Ok(());
