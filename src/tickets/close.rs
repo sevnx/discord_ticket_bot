@@ -1,6 +1,9 @@
-use poise::serenity_prelude::{CreateMessage, UserId};
+use poise::serenity_prelude::{CreateEmbed, CreateMessage, GuildId, Http, UserId};
 
-use crate::handler::{Context, Error};
+use crate::{
+    handler::{Context, Error},
+    helper::embed::CustomEmbed,
+};
 
 pub async fn close(ctx: &Context<'_>) -> Result<(), Error> {
     let mut pool = ctx.data().pool.acquire().await?;
@@ -23,14 +26,32 @@ pub async fn close(ctx: &Context<'_>) -> Result<(), Error> {
 
     // TODO: Log the closing of the ticket
 
-    // Send message to the user that the ticket has been closed
-    let user = UserId::from(ticket.author_id as u64);
-
-    let message = CreateMessage::new().content("Your ticket has been closed");
-    user.dm(ctx.http(), message).await?;
+    send_closed_ticket_dm(
+        UserId::from(ticket.author_id as u64),
+        ctx.guild_id().unwrap(),
+        &ctx.http(),
+        "Ticket closed",
+    )
+    .await?;
 
     // Delete the channel
     ctx.channel_id().delete(&ctx.http()).await?;
+
+    Ok(())
+}
+
+pub async fn send_closed_ticket_dm(
+    user: UserId,
+    guild: GuildId,
+    http_cache: &Http,
+    reason: &str,
+) -> Result<(), Error> {
+    let embed = CreateEmbed::default_bot_embed(guild.to_partial_guild(http_cache).await?)
+        .title("Ticket Closed")
+        .field("Reason", reason, false);
+
+    user.dm(http_cache, CreateMessage::default().embed(embed))
+        .await?;
 
     Ok(())
 }

@@ -3,15 +3,15 @@ use std::time::Duration;
 use crate::{
     database::get_subjects,
     handler::{Data, Error},
-    helper::fuzzy_match::fuzzy_match_subjects,
+    helper::{embed::CustomEmbed, fuzzy_match::fuzzy_match_subjects},
 };
 use poise::serenity_prelude::{
     CacheHttp, ChannelId, ChannelType, ComponentInteractionDataKind, Context, CreateActionRow,
-    CreateChannel, CreateEmbed, CreateMessage, CreateSelectMenu, CreateSelectMenuKind,
-    CreateSelectMenuOption, EditChannel, Http, Member, User,
+    CreateChannel, CreateEmbed, CreateEmbedFooter, CreateMessage, CreateSelectMenu,
+    CreateSelectMenuKind, CreateSelectMenuOption, EditChannel, GuildId, Http, Member, Mentionable,
 };
 
-use super::TICKET_EMOJI;
+use super::{close::send_closed_ticket_dm, TICKET_EMOJI};
 
 /// Handles the creation of a ticket
 /// It creates a new channel in the unclaimed category
@@ -35,27 +35,28 @@ pub async fn create(
 
     let mut channel = guild.create_channel(ctx.http(), channel_builder).await?;
 
-    // Send DM
+    // Send DM to the user in a separate task to avoid blocking
     let cache_copy = ctx.http.clone();
     let user = member.user.clone();
     let channel_id = channel.id;
-
+    let guild_id = guild.clone();
     tokio::spawn(async move {
-        send_opened_ticket_dm(&cache_copy, &user, &channel_id)
-            .await
-            .unwrap_or_else(|e| error!("Failed to send DM: {}", e));
+        let message = get_open_ticket_dm(&guild_id, &channel_id, &cache_copy).await;
+        user.dm(cache_copy, message).await.unwrap_or_else(|e| {
+            panic!("Failed to send DM to user: {}", e);
+        });
     });
 
     // Send message in channel
-    // TODO: Change message to embed to make it look better
-    let message = CreateMessage::new().content(format!(
-        "Hello <@{}>, welcome to your ticket channel, please type out the subject of your ticket",
-        member.user.id
-    ));
-
-    channel.send_message(ctx.http(), message).await?;
+    channel
+        .send_message(
+            ctx.http(),
+            get_open_ticket_message(member, ctx.http()).await,
+        )
+        .await?;
 
     // Wait for user input
+    // TODO: Make timeout configurable
     let subject = match channel
         .await_reply(ctx)
         .timeout(Duration::from_secs(60))
@@ -63,9 +64,7 @@ pub async fn create(
     {
         Some(reply) => reply.content,
         None => {
-            // TODO: Close ticket
-            // TODO: Send DM to user that the ticket has been closed
-            return Ok(());
+            return handle_timeout(&channel.id, member, &guild, ctx.http()).await;
         }
     };
 
@@ -93,13 +92,12 @@ pub async fn create(
         },
     );
 
-    let embed = CreateEmbed::default()
-        .title("Select an option")
-        .description("Please select the subject of your ticket")
-        .color(0x00ff00);
-
     let message = CreateMessage::default()
-        .embed(embed)
+        .embed(
+            CreateEmbed::default_bot_embed(guild.to_partial_guild(ctx.http()).await?)
+                .title("Select an option")
+                .description("Please select the subject of your ticket"),
+        )
         .components(vec![CreateActionRow::SelectMenu(select_menu)]);
 
     let sent = channel.send_message(ctx.http(), message).await?;
@@ -143,19 +141,74 @@ pub async fn create(
     Ok(())
 }
 
-async fn send_opened_ticket_dm(
-    http_cache: &Http,
-    user: &User,
-    channel_id: &ChannelId,
+/// Handles the timeout for the ticket creation
+async fn handle_timeout(
+    channel: &ChannelId,
+    member: &Member,
+    guild: &GuildId,
+    http: &Http,
 ) -> Result<(), Error> {
-    // TODO: Change message to embed to make it look better
-    let dm_message = CreateMessage::new()
-        .content(format!("Your ticket has been created : <#{}>", channel_id))
-        .tts(false);
+    // Delete ticket channel
+    channel.delete(http).await?;
 
-    user.dm(http_cache, dm_message).await?;
+    // Send DM to user
+    send_closed_ticket_dm(
+        member.user.id,
+        guild.clone(),
+        http,
+        "Ticket creation timed out",
+    )
+    .await?;
 
     Ok(())
+}
+
+/// Returns an embed message to be sent to the user in DM when the person opens a ticket
+async fn get_open_ticket_dm(
+    guild_id: &GuildId,
+    channel_id: &ChannelId,
+    http: &Http,
+) -> CreateMessage {
+    let guild = guild_id.to_partial_guild(http).await.unwrap();
+
+    let embed = CreateEmbed::default_bot_embed(guild)
+        .title("Ticket Created")
+        .field("Ticket Channel", format!("<#{}>", channel_id), false)
+        .field(
+            "Next Steps",
+            "Please visit the ticket channel and provide details about your question or issue.",
+            false,
+        )
+        .footer(CreateEmbedFooter::new(
+            "To close the ticket, type `$close` in the ticket channel",
+        ));
+
+    CreateMessage::new().embed(embed)
+}
+
+/// Returns an embed message to be sent to the user in the ticket channel when the ticket is opened
+async fn get_open_ticket_message(member: &Member, http: &Http) -> CreateMessage {
+    let guild = member.guild_id.to_partial_guild(http).await.unwrap();
+
+    let embed = CreateEmbed::default_bot_embed(guild)
+        .title("Ticket Created")
+        .description(format!(
+            "Hello {} welcome to your ticket channel.",
+            member.mention()
+        ))
+        .field(
+            "Next Steps",
+            "1. Type out the subject of your ticket, and choose the appropriate subject\n
+            2. Provide a detailed description of your question or issue with any relevant information
+            (e.g. screenshots, logs, etc.)\n
+            3. Wait until the ticket is claimed by a helper",
+            false,
+        )
+        .footer(CreateEmbedFooter::new(
+            "To close the ticket, type `$close` in the ticket channel",
+        ));
+
+    CreateMessage::new().embed(embed)
 }
 
 /// Returns the name of the temporary name for the newly created ticket channel
