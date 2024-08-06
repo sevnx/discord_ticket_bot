@@ -112,7 +112,7 @@ async fn setup_request_channel(
     guild_id: GuildId,
     channel_id: ChannelId,
 ) -> Result<(), Error> {
-    let Ok(channel) = ctx.http().get_channel(channel_id.into()).await else {
+    let Ok(channel) = ctx.http().get_channel(channel_id).await else {
         ctx.send_simple_message(messages::MSG_SETUP_CHANNEL_NOT_FOUND)
             .await?;
         return Ok(());
@@ -194,10 +194,7 @@ async fn create_server_category(
         .name(name)
         .kind(ChannelType::Category);
 
-    let category = ctx
-        .http()
-        .create_channel(guild_id.into(), &builder, None)
-        .await?;
+    let category = ctx.http().create_channel(guild_id, &builder, None).await?;
 
     Ok(category)
 }
@@ -209,9 +206,7 @@ async fn setup_reaction_message(
     channel_id: ChannelId,
 ) -> Result<(), Error> {
     let message = CreateMessage::default().content("React with 🎫 to open a ticket");
-    let sent_message = ChannelId::from(channel_id)
-        .send_message(&ctx, message)
-        .await?;
+    let sent_message = channel_id.send_message(&ctx, message).await?;
 
     sqlx::query!(
         "UPDATE servers SET ticket_message_id = $1 WHERE id = $2",

@@ -10,12 +10,9 @@ pub async fn event_handler(
     _: poise::FrameworkContext<'_, Data, Error>,
     data: &Data,
 ) -> Result<(), Error> {
-    match event {
-        // TODO: (?) Handle other events (like `Ready` etc.)
-        FullEvent::ReactionAdd { add_reaction } => {
-            handle_reaction(ctx, add_reaction, data).await?;
-        }
-        _ => {}
+    // TODO: Improve error handling
+    if let FullEvent::ReactionAdd { add_reaction } = event {
+        handle_reaction(ctx, add_reaction, data).await?;
     }
     Ok(())
 }
@@ -26,11 +23,10 @@ async fn handle_reaction(
     data: &Data,
 ) -> Result<(), Error> {
     // TODO: Improve error handling
-    let member = reaction
-        .guild_id
-        .unwrap()
-        .member(ctx, reaction.user_id.unwrap())
-        .await?;
+    let guild_id = reaction.guild_id.ok_or("Failed to get guild ID")?;
+    let user_id = reaction.user_id.ok_or("Failed to get user ID")?;
+
+    let member = guild_id.member(ctx, user_id).await?;
 
     let mut pool = data.pool.acquire().await?;
 
@@ -47,7 +43,7 @@ async fn handle_reaction(
         id = $1 AND 
         ticket_channel_id = $2 AND 
         ticket_message_id = $3",
-        reaction.guild_id.unwrap().get() as i64,
+        guild_id.get() as i64,
         reaction.channel_id.get() as i64,
         reaction.message_id.get() as i64
     )
@@ -56,8 +52,10 @@ async fn handle_reaction(
 
     match row {
         Some(row) => {
-            let unclaimed_id = row.unclaimed_category_id.unwrap();
-            tickets::create::create(&ctx, data, &member, unclaimed_id as u64).await?;
+            let unclaimed_id = row
+                .unclaimed_category_id
+                .ok_or("Unclaimed category ID not found")?;
+            tickets::create::create(ctx, data, &member, unclaimed_id as u64).await?;
         }
         None => {
             return Ok(());

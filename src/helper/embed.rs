@@ -3,9 +3,10 @@
 use chrono::Utc;
 use poise::serenity_prelude::{CreateEmbed, CreateEmbedAuthor, PartialGuild};
 
-const DEFAULT_COLOR: u32 = 0x5865F2;
+const DEFAULT_COLOR: u32 = 0x58_65F2;
 
-pub trait CustomEmbed {
+/// Custom trait for embeds
+pub trait Custom {
     /// Returns the embed builder with defaults (in the context of this bot)
     /// Defaults include
     /// - Author as the guild (name + icon)
@@ -14,16 +15,15 @@ pub trait CustomEmbed {
     fn default_bot_embed(guild: PartialGuild) -> CreateEmbed;
 }
 
-/// Default implementation for CreateEmbed
-impl CustomEmbed for CreateEmbed {
+/// Default implementation for `CreateEmbed`
+impl Custom for CreateEmbed {
     fn default_bot_embed(guild: PartialGuild) -> CreateEmbed {
-        let icon = guild.icon_url().unwrap_or(
-            // Blank image
-            "https://upload.wikimedia.org/wikipedia/commons/4/48/BLANK_ICON.png".to_string(),
-        );
+        let icon = guild.icon_url().unwrap_or_else(|| {
+            "https://upload.wikimedia.org/wikipedia/commons/4/48/BLANK_ICON.png".to_string()
+        });
         let author = CreateEmbedAuthor::new(guild.name).icon_url(icon);
 
-        CreateEmbed::default()
+        Self::default()
             .author(author)
             .color(DEFAULT_COLOR)
             .timestamp(Utc::now())

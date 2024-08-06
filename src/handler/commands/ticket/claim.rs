@@ -13,7 +13,7 @@ use poise::command;
 )]
 pub async fn claim(ctx: Context<'_>) -> Result<(), Error> {
     match tickets::claim::claim(&ctx).await {
-        Ok(_) => {
+        Ok(()) => {
             ctx.reply("✅").await?;
         }
         Err(e) => {

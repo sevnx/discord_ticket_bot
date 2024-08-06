@@ -1,4 +1,5 @@
 #![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_sign_loss)]
 
 use dotenv::dotenv;
 use handler::get_framework;

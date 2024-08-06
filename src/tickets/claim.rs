@@ -12,7 +12,10 @@ pub async fn claim(ctx: &Context<'_>) -> Result<(), Error> {
     .fetch_optional(&mut *pool)
     .await?;
 
-    let role_id = row.unwrap().helper_role_id.unwrap() as u64;
+    let role_id = row
+        .map(|row| row.helper_role_id)
+        .ok_or("Failed to find the server")?
+        .ok_or("Helper role ID not found")? as u64;
 
     // Cannot claim
     if !ctx.author().has_role(ctx.http(), guild_id, role_id).await? {
@@ -42,7 +45,7 @@ pub async fn claim(ctx: &Context<'_>) -> Result<(), Error> {
         .fetch_one(&mut *pool)
         .await?
         .claimed_category_id
-        .unwrap() as u64,
+        .ok_or("Server not found")? as u64,
     );
 
     let edit_channel = EditChannel::new()

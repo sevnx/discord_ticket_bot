@@ -2,10 +2,11 @@ use poise::serenity_prelude::{CreateEmbed, CreateMessage, GuildId, Http, UserId}
 
 use crate::{
     handler::{Context, Error},
-    helper::embed::CustomEmbed,
+    helper::embed::Custom,
 };
 
 pub async fn close(ctx: &Context<'_>) -> Result<(), Error> {
+    let guild = ctx.guild_id().ok_or("Not in a guild")?;
     let mut pool = ctx.data().pool.acquire().await?;
 
     let channel = ctx.channel_id();
@@ -28,8 +29,8 @@ pub async fn close(ctx: &Context<'_>) -> Result<(), Error> {
 
     send_closed_ticket_dm(
         UserId::from(ticket.author_id as u64),
-        ctx.guild_id().unwrap(),
-        &ctx.http(),
+        guild,
+        ctx.http(),
         "Ticket closed",
     )
     .await?;

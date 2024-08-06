@@ -4,19 +4,14 @@ use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 
 use crate::database::Subject;
 
-pub fn fuzzy_match_subjects(
-    subjects: &[Subject],
-    query: &str,
-    number_of_results: usize,
-) -> Vec<Subject> {
+pub fn match_subjects(subjects: &[Subject], query: &str, number_of_results: usize) -> Vec<Subject> {
     info!("Fuzzy matching subjects with query: {}", query);
-    let matcher = SkimMatcherV2::default();
 
     // Create a vector of (score, &subject) tuples
     let mut matched: Vec<(i64, &Subject)> = subjects
         .iter()
         .filter_map(|subject| {
-            matcher
+            SkimMatcherV2::default()
                 .fuzzy_match(&subject.name, query)
                 .map(|score| (score, subject))
         })

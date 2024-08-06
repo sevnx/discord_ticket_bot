@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{
     database::get_subjects,
     handler::{Data, Error},
-    helper::{embed::CustomEmbed, fuzzy_match::fuzzy_match_subjects},
+    helper::{embed::Custom, fuzzy_match::match_subjects},
 };
 use poise::serenity_prelude::{
     CacheHttp, ChannelId, ChannelType, ComponentInteractionDataKind, Context, CreateActionRow,
@@ -39,11 +39,15 @@ pub async fn create(
     let cache_copy = ctx.http.clone();
     let user = member.user.clone();
     let channel_id = channel.id;
-    let guild_id = guild.clone();
+    let guild_id = guild;
     tokio::spawn(async move {
-        let message = get_open_ticket_dm(&guild_id, &channel_id, &cache_copy).await;
+        let message = get_open_ticket_dm(&guild_id, &channel_id, &cache_copy)
+            .await
+            .unwrap_or_else(|e| {
+                panic!("Failed to create DM message: {e}");
+            });
         user.dm(cache_copy, message).await.unwrap_or_else(|e| {
-            panic!("Failed to send DM to user: {}", e);
+            panic!("Failed to send DM to user: {e}");
         });
     });
 
@@ -51,7 +55,7 @@ pub async fn create(
     channel
         .send_message(
             ctx.http(),
-            get_open_ticket_message(member, ctx.http()).await,
+            get_open_ticket_message(member, ctx.http()).await?,
         )
         .await?;
 
@@ -69,8 +73,8 @@ pub async fn create(
     };
 
     // Fuzzy match subjects
-    let subjects = get_subjects(&mut *pool, guild).await?;
-    let mut fuzzy_result = fuzzy_match_subjects(&subjects, &subject, 5);
+    let subjects = get_subjects(&mut pool, guild).await?;
+    let mut fuzzy_result = match_subjects(&subjects, &subject, 5);
 
     // Add default subject
     fuzzy_result.push(crate::database::Subject {
@@ -111,7 +115,9 @@ pub async fn create(
         Some(component) => match component.data.kind {
             ComponentInteractionDataKind::StringSelect { values } => {
                 assert!(values.len() == 1);
-                let index = values[0].parse::<usize>().unwrap();
+                let Ok(index) = values[0].parse::<usize>() else {
+                    return Ok(());
+                };
                 fuzzy_result.remove(index)
             }
             _ => return Ok(()),
@@ -152,13 +158,7 @@ async fn handle_timeout(
     channel.delete(http).await?;
 
     // Send DM to user
-    send_closed_ticket_dm(
-        member.user.id,
-        guild.clone(),
-        http,
-        "Ticket creation timed out",
-    )
-    .await?;
+    send_closed_ticket_dm(member.user.id, *guild, http, "Ticket creation timed out").await?;
 
     Ok(())
 }
@@ -168,12 +168,15 @@ async fn get_open_ticket_dm(
     guild_id: &GuildId,
     channel_id: &ChannelId,
     http: &Http,
-) -> CreateMessage {
-    let guild = guild_id.to_partial_guild(http).await.unwrap();
+) -> Result<CreateMessage, Error> {
+    let guild = guild_id
+        .to_partial_guild(http)
+        .await
+        .map_err(|e| format!("Failed to get guild: {e}"))?;
 
     let embed = CreateEmbed::default_bot_embed(guild)
         .title("Ticket Created")
-        .field("Ticket Channel", format!("<#{}>", channel_id), false)
+        .field("Ticket Channel", format!("<#{channel_id}>"), false)
         .field(
             "Next Steps",
             "Please visit the ticket channel and provide details about your question or issue.",
@@ -183,12 +186,16 @@ async fn get_open_ticket_dm(
             "To close the ticket, type `$close` in the ticket channel",
         ));
 
-    CreateMessage::new().embed(embed)
+    Ok(CreateMessage::new().embed(embed))
 }
 
 /// Returns an embed message to be sent to the user in the ticket channel when the ticket is opened
-async fn get_open_ticket_message(member: &Member, http: &Http) -> CreateMessage {
-    let guild = member.guild_id.to_partial_guild(http).await.unwrap();
+async fn get_open_ticket_message(member: &Member, http: &Http) -> Result<CreateMessage, Error> {
+    let guild = member
+        .guild_id
+        .to_partial_guild(http)
+        .await
+        .map_err(|e| format!("Failed to get guild: {e}"))?;
 
     let embed = CreateEmbed::default_bot_embed(guild)
         .title("Ticket Created")
@@ -208,7 +215,7 @@ async fn get_open_ticket_message(member: &Member, http: &Http) -> CreateMessage 
             "To close the ticket, type `$close` in the ticket channel",
         ));
 
-    CreateMessage::new().embed(embed)
+    Ok(CreateMessage::new().embed(embed))
 }
 
 /// Returns the name of the temporary name for the newly created ticket channel
