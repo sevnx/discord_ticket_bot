@@ -22,10 +22,13 @@ pub async fn close(ctx: &Context<'_>) -> Result<(), Error> {
         return Ok(());
     };
 
+    // Check if the user is the author of the ticket
     if ctx.author().id != UserId::from(ticket.author_id as u64) {
         warn!("Tried to close a ticket that doesn't belong to them");
         return Ok(());
     }
+
+    // TODO: Check if the user is a moderator (helpers can't close tickets)
 
     // TODO: Log the closing of the ticket
 

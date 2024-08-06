@@ -6,9 +6,10 @@ use poise::{
     command,
     serenity_prelude::{
         model::channel, ChannelId, ChannelType, CreateChannel, CreateEmbed, CreateMessage,
-        EditRole, GuildChannel, GuildId, ReactionType,
+        GuildChannel, GuildId, ReactionType,
     },
 };
+use roles::get_new_or_existing_role;
 use sqlx::PgConnection;
 
 use crate::{
@@ -17,6 +18,8 @@ use crate::{
     helper::{embed::Custom, parser::parse_discord_channel_id_url},
     tickets::TICKET_EMOJI,
 };
+
+mod roles;
 
 /// Constants for messages
 // TODO: Do something about this, to unify handling across the bot
@@ -63,8 +66,8 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
     let channel_id = ask_for_ticket_channel_id(&ctx).await?;
     setup_request_channel(&ctx, &mut pool, guild_id, channel_id).await?;
     create_ticket_channel_categories(&ctx, &mut pool, guild_id).await?;
-    create_helper_role(&ctx, &mut pool, guild_id).await?;
-    // TODO: Add the addition of a moderator role
+    setup_helper_role(&ctx, &mut pool, guild_id).await?;
+    setup_moderator_role(&ctx, &mut pool, guild_id).await?;
     // TODO: (?) Handle adding a log channel, in case we have errors we want to output
     setup_reaction_message(&ctx, &mut pool, guild_id, channel_id).await?;
 
@@ -138,21 +141,43 @@ async fn setup_request_channel(
     Ok(())
 }
 
-/// Creates the helper role
+/// Setup the helper role
 ///
 /// Helpers are the people who can claim and see the tickets
-/// They cannot however close the tickets (reserved for admins)
-async fn create_helper_role(
+/// They cannot however close the tickets (reserved for moderators)
+async fn setup_helper_role(
     ctx: &Context<'_>,
     pool: &mut PgConnection,
     guild_id: GuildId,
 ) -> Result<(), Error> {
-    let role = EditRole::default().name("Helper");
-    let created_role = guild_id.create_role(ctx.http(), role).await?;
+    let role = get_new_or_existing_role(ctx, guild_id, "Helper Role Setup", "Helper").await?;
 
     sqlx::query!(
         "UPDATE servers SET helper_role_id = $1 WHERE id = $2",
-        created_role.id.get() as i64,
+        role.get() as i64,
+        guild_id.get() as i64
+    )
+    .execute(&mut *pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Setup the moderator role
+///
+/// Moderators are the people who can see and close the tickets
+/// They cannot claim the tickets (reserved for helpers)
+async fn setup_moderator_role(
+    ctx: &Context<'_>,
+    pool: &mut PgConnection,
+    guild_id: GuildId,
+) -> Result<(), Error> {
+    let role_id =
+        get_new_or_existing_role(ctx, guild_id, "Moderator Role Setup", "Moderator").await?;
+
+    sqlx::query!(
+        "UPDATE servers SET moderator_role_id = $1 WHERE id = $2",
+        role_id.get() as i64,
         guild_id.get() as i64
     )
     .execute(&mut *pool)
