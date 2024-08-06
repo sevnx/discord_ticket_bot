@@ -5,8 +5,8 @@ use std::time::Duration;
 use poise::{
     command,
     serenity_prelude::{
-        model::channel, ChannelId, ChannelType, CreateChannel, CreateMessage, EditRole,
-        GuildChannel, GuildId, ReactionType,
+        model::channel, ChannelId, ChannelType, CreateChannel, CreateEmbed, CreateMessage,
+        EditRole, GuildChannel, GuildId, ReactionType,
     },
 };
 use sqlx::PgConnection;
@@ -14,7 +14,7 @@ use sqlx::PgConnection;
 use crate::{
     database::is_server_setup,
     handler::{commands::SimpleMessage, Context, Error},
-    helper::parser::parse_discord_channel_id_url,
+    helper::{embed::Custom, parser::parse_discord_channel_id_url},
     tickets::TICKET_EMOJI,
 };
 
@@ -64,6 +64,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
     setup_request_channel(&ctx, &mut pool, guild_id, channel_id).await?;
     create_ticket_channel_categories(&ctx, &mut pool, guild_id).await?;
     create_helper_role(&ctx, &mut pool, guild_id).await?;
+    // TODO: Add the addition of a moderator role
     // TODO: (?) Handle adding a log channel, in case we have errors we want to output
     setup_reaction_message(&ctx, &mut pool, guild_id, channel_id).await?;
 
@@ -199,14 +200,20 @@ async fn create_server_category(
     Ok(category)
 }
 
+/// Sets up the reaction message, sent in the ticket channel provided by the user
 async fn setup_reaction_message(
     ctx: &Context<'_>,
     pool: &mut PgConnection,
     guild_id: GuildId,
     channel_id: ChannelId,
 ) -> Result<(), Error> {
-    let message = CreateMessage::default().content("React with 🎫 to open a ticket");
-    let sent_message = channel_id.send_message(&ctx, message).await?;
+    let embed = CreateEmbed::default_bot_embed(guild_id.to_partial_guild(ctx.http()).await?)
+        .title("Open a ticket")
+        .description("React to this message to open a ticket");
+
+    let sent_message = channel_id
+        .send_message(&ctx, CreateMessage::default().embed(embed))
+        .await?;
 
     sqlx::query!(
         "UPDATE servers SET ticket_message_id = $1 WHERE id = $2",

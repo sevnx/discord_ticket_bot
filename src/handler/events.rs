@@ -55,13 +55,14 @@ async fn handle_reaction(
             let unclaimed_id = row
                 .unclaimed_category_id
                 .ok_or("Unclaimed category ID not found")?;
-            tickets::create::create(ctx, data, &member, unclaimed_id as u64).await?;
+            tickets::create_ticket(ctx, data, &member, unclaimed_id as u64).await?;
         }
         None => {
             return Ok(());
         }
     }
 
+    info!("Deleting reaction");
     reaction.delete(ctx.http()).await?;
 
     Ok(())

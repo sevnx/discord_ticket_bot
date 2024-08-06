@@ -13,7 +13,7 @@ use poise::command;
     guild_only
 )]
 pub async fn close(ctx: Context<'_>) -> Result<(), Error> {
-    if let Err(error) = tickets::close::close(&ctx).await {
+    if let Err(error) = tickets::close_ticket(&ctx).await {
         error!("Error closing ticket: {}", error);
     }
 

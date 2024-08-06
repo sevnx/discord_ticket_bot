@@ -18,10 +18,12 @@ pub async fn close(ctx: &Context<'_>) -> Result<(), Error> {
     .fetch_optional(&mut *pool)
     .await?
     else {
+        warn!("Tried to close a non-ticket channel");
         return Ok(());
     };
 
     if ctx.author().id != UserId::from(ticket.author_id as u64) {
+        warn!("Tried to close a ticket that doesn't belong to them");
         return Ok(());
     }
 

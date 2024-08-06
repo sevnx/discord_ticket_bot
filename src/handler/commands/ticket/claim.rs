@@ -12,7 +12,7 @@ use poise::command;
     guild_only
 )]
 pub async fn claim(ctx: Context<'_>) -> Result<(), Error> {
-    match tickets::claim::claim(&ctx).await {
+    match tickets::claim_ticket(&ctx).await {
         Ok(()) => {
             ctx.reply("✅").await?;
         }

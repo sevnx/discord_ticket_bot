@@ -204,11 +204,8 @@ async fn get_open_ticket_message(member: &Member, http: &Http) -> Result<CreateM
             member.mention()
         ))
         .field(
-            "Next Steps",
-            "1. Type out the subject of your ticket, and choose the appropriate subject\n
-            2. Provide a detailed description of your question or issue with any relevant information
-            (e.g. screenshots, logs, etc.)\n
-            3. Wait until the ticket is claimed by a helper",
+            "Subject",
+            "Please provide the subject of your ticket",
             false,
         )
         .footer(CreateEmbedFooter::new(
