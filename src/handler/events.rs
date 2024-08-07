@@ -52,9 +52,7 @@ async fn handle_reaction(
 
     match row {
         Some(row) => {
-            let unclaimed_id = row
-                .unclaimed_category_id
-                .ok_or("Unclaimed category ID not found")?;
+            let unclaimed_id = row.unclaimed_category_id;
             tickets::create_ticket(ctx, data, &member, unclaimed_id as u64).await?;
         }
         None => {

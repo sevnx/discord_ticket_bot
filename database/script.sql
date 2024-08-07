@@ -49,11 +49,13 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.servers (
     id bigint NOT NULL,
-    setup_complete boolean DEFAULT false NOT NULL,
-    ticket_channel_id bigint,
-    unclaimed_category_id bigint,
-    claimed_category_id bigint,
-    ticket_message_id bigint
+    ticket_channel_id bigint NOT NULL,
+    unclaimed_category_id bigint NOT NULL,
+    claimed_category_id bigint NOT NULL,
+    ticket_message_id bigint NOT NULL,
+    helper_role_id bigint NOT NULL,
+    moderator_role_id bigint NOT NULL,
+    log_channel_id bigint NOT NULL
 );
 
 
@@ -133,6 +135,24 @@ ALTER TABLE ONLY public.tickets ALTER COLUMN ticket_id SET DEFAULT nextval('publ
 
 
 --
+-- Data for Name: servers; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: subjects; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: tickets; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
 -- Name: subjects_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
@@ -143,7 +163,7 @@ SELECT pg_catalog.setval('public.subjects_id_seq', 8, true);
 -- Name: tickets_ticket_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.tickets_ticket_id_seq', 2, true);
+SELECT pg_catalog.setval('public.tickets_ticket_id_seq', 7, true);
 
 
 --
