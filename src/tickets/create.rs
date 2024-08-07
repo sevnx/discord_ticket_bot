@@ -42,11 +42,7 @@ pub async fn create(
     let channel_id = channel.id;
     let guild_copy = guild.clone();
     tokio::spawn(async move {
-        let message = get_open_ticket_dm(&guild_copy, &channel_id)
-            .await
-            .unwrap_or_else(|e| {
-                panic!("Failed to create DM message: {e}");
-            });
+        let message = get_open_ticket_dm(&guild_copy, channel_id);
         user.dm(cache_copy, message).await.unwrap_or_else(|e| {
             panic!("Failed to send DM to user: {e}");
         });
@@ -54,7 +50,7 @@ pub async fn create(
 
     // Send message in channel
     channel
-        .send_message(ctx.http(), get_open_ticket_message(member, &guild).await?)
+        .send_message(ctx.http(), get_open_ticket_message(member, &guild))
         .await?;
 
     // Wait for user input
@@ -162,10 +158,7 @@ async fn handle_timeout(
 }
 
 /// Returns an embed message to be sent to the user in DM when the person opens a ticket
-async fn get_open_ticket_dm(
-    guild: &PartialGuild,
-    channel_id: &ChannelId,
-) -> Result<CreateMessage, Error> {
+fn get_open_ticket_dm(guild: &PartialGuild, channel_id: ChannelId) -> CreateMessage {
     let embed = CreateEmbed::default_bot_embed(guild)
         .title("Ticket Created")
         .field("Ticket Channel", format!("<#{channel_id}>"), false)
@@ -178,14 +171,11 @@ async fn get_open_ticket_dm(
             "To close the ticket, type `$close` in the ticket channel",
         ));
 
-    Ok(CreateMessage::new().embed(embed))
+    CreateMessage::new().embed(embed)
 }
 
 /// Returns an embed message to be sent to the user in the ticket channel when the ticket is opened
-async fn get_open_ticket_message(
-    member: &Member,
-    guild: &PartialGuild,
-) -> Result<CreateMessage, Error> {
+fn get_open_ticket_message(member: &Member, guild: &PartialGuild) -> CreateMessage {
     let embed = CreateEmbed::default_bot_embed(guild)
         .title("Ticket Created")
         .description(format!(
@@ -201,7 +191,7 @@ async fn get_open_ticket_message(
             "To close the ticket, type `$close` in the ticket channel",
         ));
 
-    Ok(CreateMessage::new().embed(embed))
+    CreateMessage::new().embed(embed)
 }
 
 /// Returns the name of the temporary name for the newly created ticket channel

@@ -65,7 +65,7 @@ async fn create_new_role(
 /// Select an existing role for the helpers
 async fn select_existing_role(ctx: &Context<'_>, guild: &PartialGuild) -> Result<RoleId, Error> {
     // Ask the user to mention the role
-    let embed = CreateEmbed::default_bot_embed(&guild)
+    let embed = CreateEmbed::default_bot_embed(guild)
         .title("Select a role")
         .description("Please mention the role you want to use as the helper role");
 

@@ -41,14 +41,18 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
         return Ok(());
     }
 
+    info!("Setting up server {}", guild.name);
+
     // Guild ID
     guild_info.guild(guild.id);
 
     // Channels
+    info!("Setting up ticket channels for {}", guild.name);
     guild_info.ticket_channel(get_ticket_channel_id(&ctx).await?);
     guild_info.log_channel(get_log_channel_id(&ctx).await?);
 
     // Categories
+    info!("Setting up categories for {}", guild.name);
     guild_info.unclaimed_category(
         create_server_category(&ctx, guild.id, "Unclaimed Tickets")
             .await?
@@ -61,6 +65,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
     );
 
     // Roles
+    info!("Setting up roles for {}", guild.name);
     guild_info.helper_role(get_new_or_existing_role(&ctx, &guild, "Helper Role", "Helper").await?);
 
     guild_info.moderator_role(
@@ -68,6 +73,7 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
     );
 
     // Save information about the ticket channel
+    info!("Saving server setup data for {}", guild.name);
     guild_info.build()?.setup(&ctx).await
 }
 

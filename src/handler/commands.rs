@@ -12,6 +12,7 @@ pub mod ticket;
 /// Get all the commands supported by the bot
 pub fn get() -> Vec<Command<Data, super::Error>> {
     vec![
+        server::reset::reset(),
         server::setup::setup(),
         subject::add::add_slash(),
         subject::add::add_prefix(),
