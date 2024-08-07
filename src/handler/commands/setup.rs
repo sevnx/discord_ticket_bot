@@ -63,13 +63,14 @@ pub async fn setup(ctx: Context<'_>) -> Result<(), Error> {
         _ => {}
     }
 
-    let channel_id = ask_for_ticket_channel_id(&ctx).await?;
-    setup_request_channel(&ctx, &mut pool, guild_id, channel_id).await?;
+    let ticket_channel = ask_for_ticket_channel_id(&ctx).await?;
+    setup_log_channel(&ctx, &mut pool).await?;
+    setup_request_channel(&ctx, &mut pool, guild_id, ticket_channel).await?;
     create_ticket_channel_categories(&ctx, &mut pool, guild_id).await?;
     setup_helper_role(&ctx, &mut pool, guild_id).await?;
     setup_moderator_role(&ctx, &mut pool, guild_id).await?;
     // TODO: (?) Handle adding a log channel, in case we have errors we want to output
-    setup_reaction_message(&ctx, &mut pool, guild_id, channel_id).await?;
+    setup_reaction_message(&ctx, &mut pool, guild_id, ticket_channel).await?;
 
     ctx.send_simple_message(messages::MSG_SETUP_SUCCESS).await?;
 
@@ -87,6 +88,29 @@ async fn ask_for_ticket_channel_id(ctx: &Context<'_>) -> Result<ChannelId, Error
     ctx.send_simple_message(messages::MSG_SETUP_CHANNEL_ID)
         .await?;
 
+    parse_channel_id_from_user_input(ctx).await
+}
+
+async fn setup_log_channel(ctx: &Context<'_>, pool: &mut PgConnection) -> Result<(), Error> {
+    // Get the log channel ID
+    ctx.send_simple_message("Please provide the channel ID to be used for logging")
+        .await?;
+
+    let log_channel = parse_channel_id_from_user_input(ctx).await?;
+
+    // Set the log channel ID in the database
+    sqlx::query!(
+        "UPDATE servers SET log_channel_id = $1 WHERE id = $2",
+        log_channel.get() as i64,
+        ctx.guild_id().ok_or(messages::MSG_GUILD_FAIL)?.get() as i64
+    )
+    .execute(&mut *pool)
+    .await?;
+
+    Ok(())
+}
+
+async fn parse_channel_id_from_user_input(ctx: &Context<'_>) -> Result<ChannelId, Error> {
     let Some(reply) = ctx
         .author()
         .await_reply(ctx)

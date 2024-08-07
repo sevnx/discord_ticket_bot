@@ -31,12 +31,15 @@ async fn check_server_setup(ctx: MyContext<'_>) -> Result<bool, MyError> {
 
 /// Helper trait to send simple messages (text only)
 pub trait SimpleMessage<'a, E> {
-    async fn send_simple_message(&self, text: impl Into<String>) -> Result<ReplyHandle<'a>, Error>;
+    async fn send_simple_message(&self, text: &str) -> Result<ReplyHandle<'a>, Error>;
 }
 
-impl<'a, U, E> SimpleMessage<'a, E> for Context<'a, U, E> {
-    async fn send_simple_message(&self, text: impl Into<String>) -> Result<ReplyHandle<'a>, Error> {
-        self.send(CreateReply::default().content(text.into()).reply(false))
+impl<'a, U, E> SimpleMessage<'a, E> for Context<'a, U, E>
+where
+    U: Sync,
+{
+    async fn send_simple_message(&self, text: &str) -> Result<ReplyHandle<'a>, Error> {
+        self.send(CreateReply::default().content(text).reply(false))
             .await
     }
 }
