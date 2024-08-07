@@ -26,7 +26,7 @@ pub fn get() -> Vec<Command<Data, super::Error>> {
 async fn check_server_setup(ctx: MyContext<'_>) -> Result<bool, MyError> {
     let mut pool = ctx.data().pool.acquire().await?;
     let guild_id = ctx.guild_id().ok_or("Failed to get guild ID")?;
-    Ok(is_server_setup(&mut pool, guild_id).await? == Some(true))
+    is_server_setup(&mut pool, guild_id).await
 }
 
 /// Helper trait to send simple messages (text only)

@@ -80,9 +80,9 @@ async fn select_existing_role(ctx: &Context<'_>, guild_id: GuildId) -> Result<Ro
         .timeout(Duration::from_secs(60))
         .await
     else {
-        ctx.send_simple_message(super::messages::MSG_SETUP_TIMEOUT)
+        ctx.send_simple_message("Timed out waiting for reply")
             .await?;
-        return Err(super::messages::MSG_SETUP_TIMEOUT.into());
+        return Err("Timed out waiting for reply".into());
     };
 
     // Parse the role ID

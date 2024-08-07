@@ -31,17 +31,13 @@ pub async fn get_database_pool() -> Result<sqlx::PgPool, String> {
         .map_err(|error| error.to_string())
 }
 
-pub async fn is_server_setup(
-    pool: &mut PgConnection,
-    guild_id: GuildId,
-) -> Result<Option<bool>, Error> {
-    let row = sqlx::query!(
-        "SELECT setup_complete FROM servers WHERE id = $1",
-        guild_id.get() as i64
+pub async fn is_server_setup(pool: &mut PgConnection, guild_id: GuildId) -> Result<bool, Error> {
+    Ok(
+        sqlx::query!("SELECT * FROM servers WHERE id = $1", guild_id.get() as i64)
+            .fetch_optional(&mut *pool)
+            .await?
+            .is_some(),
     )
-    .fetch_optional(&mut *pool)
-    .await?;
-    Ok(row.map(|row| row.setup_complete))
 }
 
 /// Represents a subject
