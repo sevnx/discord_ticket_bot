@@ -5,14 +5,14 @@ use crate::database::is_server_setup;
 use super::{Context as MyContext, Data, Error as MyError};
 use poise::{serenity_prelude::Error, Command, Context, CreateReply, ReplyHandle};
 
-pub mod setup;
+pub mod server;
 pub mod subject;
 pub mod ticket;
 
 /// Get all the commands supported by the bot
 pub fn get() -> Vec<Command<Data, super::Error>> {
     vec![
-        setup::setup(),
+        server::setup::setup(),
         subject::add::add_slash(),
         subject::add::add_prefix(),
         subject::list::list(),

@@ -8,7 +8,8 @@ use crate::{
 use poise::serenity_prelude::{
     CacheHttp, ChannelId, ChannelType, ComponentInteractionDataKind, Context, CreateActionRow,
     CreateChannel, CreateEmbed, CreateEmbedFooter, CreateMessage, CreateSelectMenu,
-    CreateSelectMenuKind, CreateSelectMenuOption, EditChannel, GuildId, Http, Member, Mentionable,
+    CreateSelectMenuKind, CreateSelectMenuOption, EditChannel, Http, Member, Mentionable,
+    PartialGuild,
 };
 
 use super::{close::send_closed_ticket_dm, TICKET_EMOJI};
@@ -23,7 +24,7 @@ pub async fn create(
     unclaimed_category_id: u64,
 ) -> Result<(), Error> {
     // TODO: Improve error handling
-    let guild = member.guild_id;
+    let guild = member.guild_id.to_partial_guild(ctx.http()).await?;
     let mut pool = data.pool.acquire().await?;
 
     // Create channel
@@ -39,9 +40,9 @@ pub async fn create(
     let cache_copy = ctx.http.clone();
     let user = member.user.clone();
     let channel_id = channel.id;
-    let guild_id = guild;
+    let guild_copy = guild.clone();
     tokio::spawn(async move {
-        let message = get_open_ticket_dm(&guild_id, &channel_id, &cache_copy)
+        let message = get_open_ticket_dm(&guild_copy, &channel_id)
             .await
             .unwrap_or_else(|e| {
                 panic!("Failed to create DM message: {e}");
@@ -53,10 +54,7 @@ pub async fn create(
 
     // Send message in channel
     channel
-        .send_message(
-            ctx.http(),
-            get_open_ticket_message(member, ctx.http()).await?,
-        )
+        .send_message(ctx.http(), get_open_ticket_message(member, &guild).await?)
         .await?;
 
     // Wait for user input
@@ -73,7 +71,7 @@ pub async fn create(
     };
 
     // Fuzzy match subjects
-    let subjects = get_subjects(&mut pool, guild).await?;
+    let subjects = get_subjects(&mut pool, guild.id).await?;
     let mut fuzzy_result = match_subjects(&subjects, &subject, 5);
 
     // Add default subject
@@ -98,7 +96,7 @@ pub async fn create(
 
     let message = CreateMessage::default()
         .embed(
-            CreateEmbed::default_bot_embed(guild.to_partial_guild(ctx.http()).await?)
+            CreateEmbed::default_bot_embed(&guild)
                 .title("Select an option")
                 .description("Please select the subject of your ticket"),
         )
@@ -134,7 +132,7 @@ pub async fn create(
     sqlx::query!(
         "INSERT INTO tickets (channel_id, server_id, subject_id, author_id) VALUES ($1, $2, $3, $4)",
         channel.id.get() as i64,
-        guild.get() as i64,
+        guild.id.get() as i64,
         subject.id.and_then(|id| Some(id as i64)),
         member.user.id.get() as i64
     ).execute(&mut *pool).await?;
@@ -151,29 +149,23 @@ pub async fn create(
 async fn handle_timeout(
     channel: &ChannelId,
     member: &Member,
-    guild: &GuildId,
+    guild: &PartialGuild,
     http: &Http,
 ) -> Result<(), Error> {
     // Delete ticket channel
     channel.delete(http).await?;
 
     // Send DM to user
-    send_closed_ticket_dm(member.user.id, *guild, http, "Ticket creation timed out").await?;
+    send_closed_ticket_dm(member.user.id, guild, http, "Ticket creation timed out").await?;
 
     Ok(())
 }
 
 /// Returns an embed message to be sent to the user in DM when the person opens a ticket
 async fn get_open_ticket_dm(
-    guild_id: &GuildId,
+    guild: &PartialGuild,
     channel_id: &ChannelId,
-    http: &Http,
 ) -> Result<CreateMessage, Error> {
-    let guild = guild_id
-        .to_partial_guild(http)
-        .await
-        .map_err(|e| format!("Failed to get guild: {e}"))?;
-
     let embed = CreateEmbed::default_bot_embed(guild)
         .title("Ticket Created")
         .field("Ticket Channel", format!("<#{channel_id}>"), false)
@@ -190,13 +182,10 @@ async fn get_open_ticket_dm(
 }
 
 /// Returns an embed message to be sent to the user in the ticket channel when the ticket is opened
-async fn get_open_ticket_message(member: &Member, http: &Http) -> Result<CreateMessage, Error> {
-    let guild = member
-        .guild_id
-        .to_partial_guild(http)
-        .await
-        .map_err(|e| format!("Failed to get guild: {e}"))?;
-
+async fn get_open_ticket_message(
+    member: &Member,
+    guild: &PartialGuild,
+) -> Result<CreateMessage, Error> {
     let embed = CreateEmbed::default_bot_embed(guild)
         .title("Ticket Created")
         .description(format!(

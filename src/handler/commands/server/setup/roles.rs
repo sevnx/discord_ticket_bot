@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use poise::serenity_prelude::{
-    CreateEmbed, CreateMessage, EditRole, GuildId, ReactionType, RoleId,
+    CreateEmbed, CreateMessage, EditRole, GuildId, PartialGuild, ReactionType, RoleId,
 };
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
 
 pub async fn get_new_or_existing_role(
     ctx: &Context<'_>,
-    guild_id: GuildId,
+    guild: &PartialGuild,
     title: &str,
     role_name: &str,
 ) -> Result<RoleId, Error> {
@@ -40,8 +40,8 @@ pub async fn get_new_or_existing_role(
         .ok_or("Timed out waiting for reaction")?;
 
     let role_id = match reaction.emoji {
-        ref emoji if emoji == &reaction_new => create_new_role(ctx, guild_id, role_name).await?,
-        ref emoji if emoji == &reaction_existing => select_existing_role(ctx, guild_id).await?,
+        ref emoji if emoji == &reaction_new => create_new_role(ctx, guild.id, role_name).await?,
+        ref emoji if emoji == &reaction_existing => select_existing_role(ctx, guild).await?,
         _ => {
             return Err("Invalid reaction".into());
         }
@@ -63,9 +63,9 @@ async fn create_new_role(
 }
 
 /// Select an existing role for the helpers
-async fn select_existing_role(ctx: &Context<'_>, guild_id: GuildId) -> Result<RoleId, Error> {
+async fn select_existing_role(ctx: &Context<'_>, guild: &PartialGuild) -> Result<RoleId, Error> {
     // Ask the user to mention the role
-    let embed = CreateEmbed::default_bot_embed(guild_id.to_partial_guild(ctx.http()).await?)
+    let embed = CreateEmbed::default_bot_embed(&guild)
         .title("Select a role")
         .description("Please mention the role you want to use as the helper role");
 

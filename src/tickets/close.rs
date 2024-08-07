@@ -1,4 +1,4 @@
-use poise::serenity_prelude::{CreateEmbed, CreateMessage, GuildId, Http, UserId};
+use poise::serenity_prelude::{CreateEmbed, CreateMessage, Http, PartialGuild, UserId};
 
 use crate::{
     handler::{Context, Error},
@@ -6,7 +6,12 @@ use crate::{
 };
 
 pub async fn close(ctx: &Context<'_>) -> Result<(), Error> {
-    let guild = ctx.guild_id().ok_or("Not in a guild")?;
+    let guild = ctx
+        .guild_id()
+        .ok_or("Not in a guild")?
+        .to_partial_guild(&ctx.http())
+        .await?;
+
     let mut pool = ctx.data().pool.acquire().await?;
 
     let channel = ctx.channel_id();
@@ -34,7 +39,7 @@ pub async fn close(ctx: &Context<'_>) -> Result<(), Error> {
 
     send_closed_ticket_dm(
         UserId::from(ticket.author_id as u64),
-        guild,
+        &guild,
         ctx.http(),
         "Ticket closed",
     )
@@ -48,11 +53,11 @@ pub async fn close(ctx: &Context<'_>) -> Result<(), Error> {
 
 pub async fn send_closed_ticket_dm(
     user: UserId,
-    guild: GuildId,
+    guild: &PartialGuild,
     http_cache: &Http,
     reason: &str,
 ) -> Result<(), Error> {
-    let embed = CreateEmbed::default_bot_embed(guild.to_partial_guild(http_cache).await?)
+    let embed = CreateEmbed::default_bot_embed(guild)
         .title("Ticket Closed")
         .field("Reason", reason, false);
 
